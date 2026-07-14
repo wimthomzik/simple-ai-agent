@@ -22,6 +22,13 @@ def main():
     ]
     
     response = client.chat.completions.create(model='openrouter/free', messages=messages)
+    prompt_tokens = response.usage.prompt_tokens
+    response_tokens = response.usage.completion_tokens
+    
+    if response_tokens is None:
+        raise RuntimeError("Failed API request; no completion tokens received")
+    
+    print(f"Prompt tokens: {prompt_tokens}\nResponse tokens: {response_tokens}")
     print(response.choices[0].message.content)
 
 
