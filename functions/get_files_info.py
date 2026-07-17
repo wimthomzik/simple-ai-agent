@@ -9,9 +9,10 @@ def get_files_info(working_directory: str, directory: str = ".") -> str:
         if not valid_target_dir:
             return f'Error: Cannot list "{directory}" as it is outside the permitted working directory'
 
-        if not os.path.isdir(directory):
+        if not os.path.isdir(target_dir):
             return f'Error: "{directory}" is not a directory'
 
-        return f'Success: "{directory}" is within the working directory'
+        return "\n".join(list(map(lambda file: f"- {file}: file_size={os.path.getsize(target_dir + '/' + file)} bytes, is_dir={os.path.isdir(target_dir + '/' + file)}", os.listdir(target_dir))))
+    
     except Exception as e:
-        print(f'Error: {e}')        
+        return f'Error: {e}'        
