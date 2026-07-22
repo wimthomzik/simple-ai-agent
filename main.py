@@ -1,6 +1,10 @@
 from dotenv import load_dotenv
 import os, argparse
 from openai import OpenAI
+from prompts import system_prompt
+from functions.get_files_info import get_files_info, schema_get_files_info
+from functions.get_file_content import schema_get_files_content, get_file_content
+from functions.write_file import write_file, schema_write_file
 
 
 def init_llm_client():
@@ -26,14 +30,24 @@ def main():
     client = init_llm_client()
     args = parse_args()
     
+    available_function = [
+        schema_write_file,
+        schema_get_files_content,
+        schema_get_files_info,
+    ]
+    
     messages=[
+        {
+            "role": "system",
+            "content": system_prompt,
+        },
         {
             "role": "user",
             "content": args.user_prompt,
         }
     ]   
     
-    response = client.chat.completions.create(model='openrouter/free', messages=messages)
+    response = client.chat.completions.create(model='openrouter/free', messages=messages, tools=available_function)
     prompt_tokens = response.usage.prompt_tokens
     response_tokens = response.usage.completion_tokens
     
