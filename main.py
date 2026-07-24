@@ -1,16 +1,16 @@
 from dotenv import load_dotenv
-import os, argparse
+import os, argparse, json
 from openai import OpenAI
 from prompts import system_prompt
 from functions.get_files_info import get_files_info, schema_get_files_info
 from functions.get_file_content import schema_get_files_content, get_file_content
 from functions.write_file import write_file, schema_write_file
+from functions.run_python_file import run_python_file, schema_run_python_file
 
+load_dotenv()
 
 def init_llm_client():
-    load_dotenv()
-    api_key = os.environ.get("OPENROUTER_API_KEY")
-    
+    api_key = os.getenv("OPENROUTER_API_KEY")
     if api_key is None:
         raise RuntimeError("Missing API key")
     
@@ -34,6 +34,7 @@ def main():
         schema_write_file,
         schema_get_files_content,
         schema_get_files_info,
+        schema_run_python_file
     ]
     
     messages=[
@@ -50,6 +51,12 @@ def main():
     response = client.chat.completions.create(model='openrouter/free', messages=messages, tools=available_function)
     prompt_tokens = response.usage.prompt_tokens
     response_tokens = response.usage.completion_tokens
+    
+    tool_calls = response.choices[0].message.tool_calls
+    
+    for tool_call in tool_calls:
+        function_args = json.loads(tool_call.function.arguments or "{}")
+        print(f"Calling function: {tool_call.function.name}({function_args})")
     
     if response_tokens is None:
         raise RuntimeError("Failed API request; no completion tokens received")

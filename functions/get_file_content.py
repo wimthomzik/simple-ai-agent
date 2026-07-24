@@ -1,6 +1,23 @@
 import os
 from config import MAX_CHARS
 
+schema_get_files_content = {
+    "type": "function",
+    "function": {
+        "name": "get_file_content",
+        "description": "Reads and returns the content of a specified file within the permitted working directory, truncated to a maximum number of characters if the file is too large.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "file_path": {
+                    "type": "string",
+                    "description": "The path to the file to read, relative to the working directory (e.g. 'main.py' or 'pkg/utils.py').",
+                },
+            },
+        },
+    },
+}
+
 def get_file_content(working_directory: str, file_path: str) -> str:
     try:   
         working_dir_abs = os.path.abspath(working_directory)
