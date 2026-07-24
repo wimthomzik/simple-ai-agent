@@ -1,11 +1,12 @@
 from dotenv import load_dotenv
-import os, argparse, json
 from openai import OpenAI
+import os, argparse, json
 from prompts import system_prompt
 from functions.get_files_info import get_files_info, schema_get_files_info
 from functions.get_file_content import schema_get_files_content, get_file_content
 from functions.write_file import write_file, schema_write_file
 from functions.run_python_file import run_python_file, schema_run_python_file
+from call_function import call_function
 
 load_dotenv()
 
@@ -54,9 +55,14 @@ def main():
     
     tool_calls = response.choices[0].message.tool_calls
     
-    for tool_call in tool_calls:
-        function_args = json.loads(tool_call.function.arguments or "{}")
-        print(f"Calling function: {tool_call.function.name}({function_args})")
+    if tool_calls:
+        for tool_call in tool_calls:
+            result_message = call_function(tool_call, args.verbose)
+            if result_message["content"] is None:
+                raise Exception("Missing content from tool call")
+            if args.verbose:
+                print(f"-> {result_message['content']}")
+        
     
     if response_tokens is None:
         raise RuntimeError("Failed API request; no completion tokens received")
