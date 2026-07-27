@@ -1,12 +1,13 @@
 from dotenv import load_dotenv
 from openai import OpenAI
-import os, argparse, json
+import os, argparse, sys
 from prompts import system_prompt
 from functions.get_files_info import get_files_info, schema_get_files_info
 from functions.get_file_content import schema_get_files_content, get_file_content
 from functions.write_file import write_file, schema_write_file
 from functions.run_python_file import run_python_file, schema_run_python_file
 from call_function import call_function
+from config import MAX_ITERS
 
 load_dotenv()
 
@@ -49,29 +50,45 @@ def main():
         }
     ]   
     
-    response = client.chat.completions.create(model='openrouter/free', messages=messages, tools=available_function)
-    prompt_tokens = response.usage.prompt_tokens
-    response_tokens = response.usage.completion_tokens
-    
-    tool_calls = response.choices[0].message.tool_calls
-    
-    if tool_calls:
-        for tool_call in tool_calls:
-            result_message = call_function(tool_call, args.verbose)
-            if result_message["content"] is None:
-                raise Exception("Missing content from tool call")
-            if args.verbose:
-                print(f"-> {result_message['content']}")
-        
-    
-    if response_tokens is None:
-        raise RuntimeError("Failed API request; no completion tokens received")
-    
     if args.verbose == True:
-        print(f"User prompt: {messages[-1]["content"]}")
-        print(f"Prompt tokens: {prompt_tokens}\nResponse tokens: {response_tokens}")
-    print(f"Model response: {response.choices[0].message.content}")
-
+                print(f"User prompt: {messages[-1]["content"]}")
+    
+    for _ in range(MAX_ITERS):
+        try:
+            response = client.chat.completions.create(model='openrouter/free', messages=messages, tools=available_function)
+            
+            if not response.usage:
+                raise RuntimeError("API response appears to be malformed")
+            
+            if args.verbose:
+                print(f"Prompt tokens: {response.usage.prompt_tokens}")
+                print(f"Response tokens: {response.usage.completion_tokens}")
+                        
+            message = response.choices[0].message
+            messages.append(message)
+            
+            tool_calls = message.tool_calls
+            
+            if not tool_calls:
+                print("Final response:")
+                print(message.content)
+                return
+            
+            for tool_call in tool_calls:
+                if tool_call.type != "function":
+                    continue
+                result_message = call_function(tool_call, args.verbose)
+                if not result_message["content"]:
+                    raise RuntimeError(f"Empty function response for {tool_call.function.name}")
+                if args.verbose:
+                    print(f"-> {result_message['content']}")
+                messages.append(result_message)
+                    
+        except Exception as e:
+            print(f"Error: {e}")
+            
+    print(f"Agent loop hit max. iterations ({MAX_ITERS})")
+    sys.exit(-1)
 
 if __name__ == "__main__":
     main()
